@@ -7,6 +7,7 @@
     <style>
         :root {
             --bg-color: #f0f4f8;
+            --bg-gradient: linear-gradient(135deg, #f0f4f8 0%, #d9e2ec 100%);
             --panel-bg: rgba(255, 255, 255, 0.9);
             --text-color: #334e68;
             --accent-color: #48bb78;
@@ -21,7 +22,7 @@
             width: 100%;
             height: 100%;
             overflow: hidden;
-            background-color: var(--bg-color);
+            background: var(--bg-gradient);
             font-family: var(--font-family);
             color: var(--text-color);
             touch-action: none;
@@ -61,19 +62,22 @@
         #hud {
             position: absolute;
             top: 20px;
-            width: 90%;
-            max-width: 500px;
+            width: 95%;
+            max-width: 600px;
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
+            gap: 10px;
         }
 
         .score-container {
             background: var(--panel-bg);
-            padding: 10px 20px;
+            padding: 8px 15px;
             border-radius: 15px;
             box-shadow: 0 4px 6px var(--shadow-color);
             text-align: center;
+            flex: 1;
+            min-width: 0;
         }
 
         .score-label {
@@ -193,6 +197,11 @@
             <div class="score-container ui-element">
                 <div class="score-label">Score</div>
                 <div id="score" class="score-value">0</div>
+                <div id="combo-tag" style="font-size: 10px; color: #ed8936; display: none; font-weight: bold;">COMBO x<span id="combo-val">0</span></div>
+            </div>
+            <div class="score-container ui-element">
+                <div class="score-label">Level</div>
+                <div id="level" class="score-value">1</div>
             </div>
             <div class="score-container ui-element">
                 <div class="score-label">Best</div>
@@ -320,6 +329,7 @@
             soundEnabled: true,
             volume: 0.5,
             combo: 0,
+            unlockedThemes: [0],
             particles: [],
             floatingTexts: []
         };
@@ -466,6 +476,7 @@
                 const nextLevel = Math.floor(state.score / 1000) + 1;
                 if (nextLevel > state.level) {
                     state.level = nextLevel;
+                    AnimationSystem.createFloatingText(CanvasRenderer.width / 2, CanvasRenderer.height / 2 - 100, "LEVEL UP!", "#ed8936");
                 }
                 ProgressionSystem.checkUnlocks();
                 ProgressionSystem.save();
@@ -734,7 +745,25 @@
                 scoreEl.innerText = smoothing ? state.displayScore : state.score;
                 const best = state.mode === 'daily' ? state.dailyHighScore : state.highScore;
                 highScoreEl.innerText = best;
-                document.querySelector('.score-container:nth-child(2) .score-label').innerText = state.mode === 'daily' ? 'Daily Best' : 'Best';
+
+                const labels = document.querySelectorAll('.score-label');
+                if (labels.length >= 3) {
+                    labels[2].innerText = state.mode === 'daily' ? 'Daily Best' : 'Best';
+                }
+
+                if (document.getElementById('level')) {
+                    document.getElementById('level').innerText = state.level;
+                }
+
+                const comboTag = document.getElementById('combo-tag');
+                if (comboTag) {
+                    if (state.combo > 1) {
+                        comboTag.style.display = 'block';
+                        document.getElementById('combo-val').innerText = state.combo;
+                    } else {
+                        comboTag.style.display = 'none';
+                    }
+                }
             }
         };
 
@@ -742,6 +771,7 @@
             init() {
                 this.load();
                 StreakSystem.checkStreak();
+                this.checkUnlocks();
             },
 
             save() {
@@ -979,8 +1009,8 @@
                 // Draw floating texts
                 state.floatingTexts.forEach(t => {
                     ctx.globalAlpha = t.life;
-                    ctx.fillStyle = THEMES[state.theme].colors[0];
-                    ctx.font = 'bold 24px ' + getComputedStyle(document.body).fontFamily;
+                    ctx.fillStyle = t.color || THEMES[state.theme].colors[0];
+                    ctx.font = `bold ${t.size || 24}px ` + getComputedStyle(document.body).fontFamily;
                     ctx.textAlign = 'center';
                     ctx.fillText(t.text, t.x, t.y);
                 });
